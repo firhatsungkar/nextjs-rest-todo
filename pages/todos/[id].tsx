@@ -1,4 +1,4 @@
-import { GetStaticPaths, GetStaticProps } from "next";
+import { GetServerSideProps } from "next";
 import { useRouter } from "next/dist/client/router";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -55,7 +55,7 @@ const TodoPage = (props: IProps): JSX.Element => {
     <Layout title="Users List | Next.js + TypeScript Example">
       <h1>Todos</h1>
       <p>
-        Example fetching data from inside <code>getStaticProps()</code>.
+        Example fetching data from inside <code>getServerSideProps()</code>.
       </p>
     <p>You are currently on: /todos/{currentTodo?.id}</p>
     {isLoading && (
@@ -81,35 +81,9 @@ const TodoPage = (props: IProps): JSX.Element => {
   )
 } 
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  const db = new Database()
-  const connection = await db.getConnection();
-  const todosResponse: Todo[] = await connection.manager.find(Todo, {
-    order: {createdAt: 'DESC'}
-  });
-  const todos : ITodo[] = !(todosResponse?.length > 0) ? [] : todosResponse.map(
-    todo => ({
-      id: todo.id,
-      task: todo.task,
-      done: Boolean(todo.done),
-      updatedAt: String(todo.updatedAt),
-      createdAt: String(todo.createdAt),
-    })
-  )
-  const paths = todos.map(
-    todo => ({
-      params: {id: todo.id}
-    })
-  )
-  return {
-    paths,
-    fallback: false, 
-  }
-}
-
-export const getStaticProps: GetStaticProps<{}, {id: string}> = async (context) => {
+export const getServerSideProps: GetServerSideProps = async (context) => {
   let todo: ITodo | null = null;
-  const id = context?.params?.id
+  const id = context?.params?.id as string | null;
   if (id) {
     const db = new Database()
     const connection = await db.getConnection();

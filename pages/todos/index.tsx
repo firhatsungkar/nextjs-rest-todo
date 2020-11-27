@@ -1,4 +1,4 @@
-import { GetStaticProps } from "next";
+import { GetServerSideProps } from "next";
 import Link from "next/link";
 import React, { FormEvent, useState } from "react";
 import Layout from "../../components/Layout";
@@ -86,7 +86,7 @@ const TodoPage = (props: IProps): JSX.Element => {
     <Layout title="Users List | Next.js + TypeScript Example">
       <h1>Todos</h1>
       <p>
-        Example fetching data from inside <code>getStaticProps()</code>.
+        Example fetching data from inside <code>getServerSideProps()</code>.
       </p>
     <p>You are currently on: /todos</p>
     {allTodos.length === 0 && (
@@ -129,7 +129,7 @@ const TodoPage = (props: IProps): JSX.Element => {
   )
 } 
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getServerSideProps: GetServerSideProps = async () => {
   const db = new Database()
   const connection = await db.getConnection();
   const todosResponse: Todo[] = await connection.manager.find(Todo, {
@@ -147,6 +147,6 @@ export const getStaticProps: GetStaticProps = async () => {
   return {
     props: { todos }
   }
-}
+};
 
 export default TodoPage;
