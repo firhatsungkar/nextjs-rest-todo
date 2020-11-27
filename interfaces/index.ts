@@ -4,6 +4,8 @@
 //
 // import User from 'path/to/interfaces';
 
+import { NextApiRequest, NextApiResponse } from "next";
+
 export type User = {
   id: number
   name: string
@@ -14,4 +16,20 @@ export interface ITodo {
   done: boolean,
   updatedAt: string,
   createdAt: string,
+}
+
+export type ApiMethods = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+export interface IApiController {
+  req: NextApiRequest;
+  res: NextApiResponse;
+  controllerOptions?: IBaseControllerOptions;
+  init: () => any;
+}
+
+export interface IBaseControllerOptions {
+  allowedMethods?: ApiMethods[];
+}
+export interface IConstructableController {
+  new (req: NextApiRequest, res: NextApiResponse): IApiController;
 }

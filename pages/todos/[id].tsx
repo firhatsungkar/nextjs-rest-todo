@@ -6,6 +6,7 @@ import Layout from "../../components/Layout";
 import { Database } from "../../db";
 import { Todo } from "../../db/entity/Todo";
 import { ITodo } from "../../interfaces";
+import { fetchTodoById } from "../api/todos/[id]";
 interface IProps {
   todo: ITodo,
 }
@@ -87,9 +88,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   if (id) {
     const db = new Database()
     const connection = await db.getConnection();
-    const todoResponse: Todo | undefined = await connection.manager.findOne(Todo, {
-      id
-    });
+    const todoResponse: Todo | undefined = await fetchTodoById(connection, id);
     todo = todoResponse ? {
       id: todoResponse.id,
       task: todoResponse.task,

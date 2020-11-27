@@ -6,6 +6,8 @@ import { Database } from "../../db";
 import { Todo } from "../../db/entity/Todo";
 import { ITodo } from "../../interfaces";
 import { resetInputElement } from "../../utils/form";
+import { mapTodoToObj } from "../../utils/todo";
+import { fetchAllTodos } from "../api/todos";
 
 interface IProps {
   todos: ITodo[],
@@ -132,18 +134,8 @@ const TodoPage = (props: IProps): JSX.Element => {
 export const getServerSideProps: GetServerSideProps = async () => {
   const db = new Database()
   const connection = await db.getConnection();
-  const todosResponse: Todo[] = await connection.manager.find(Todo, {
-    order: {createdAt: 'DESC'}
-  });
-  const todos : ITodo[] = !(todosResponse?.length > 0) ? [] : todosResponse.map(
-    todo => ({
-      id: todo.id,
-      task: todo.task,
-      done: Boolean(todo.done),
-      updatedAt: String(todo.updatedAt),
-      createdAt: String(todo.createdAt),
-    })
-  )
+  const todosResponse: Todo[] = await fetchAllTodos(connection);
+  const todos : ITodo[] = todosResponse.map(mapTodoToObj);
   return {
     props: { todos }
   }

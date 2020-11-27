@@ -2,110 +2,163 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { Connection } from "typeorm";
 import { Database } from "../../../db";
 import { Todo } from "../../../db/entity/Todo";
+import { BaseController } from "../../../utils/controller";
 
-const fetchTodoById = async (
+export const fetchTodoById = async (
   connection: Connection,
-  req: NextApiRequest,
-  res: NextApiResponse,
-) => {
-  const { query: { id = null } } = req;
-
-  if (id === null) {
-    res.status(401).json({ error: 'Missing id parameter.' })
-  }
-
+  id: string,
+): Promise<Todo> => {
   const todo = await connection.manager.findOneOrFail(Todo, id as string);
 
-  return res.status(200).json({ ...todo })
+  return todo;
+
 }
 
-const updateTodoById = async (
+export const updateTodoById = async (
   connection: Connection,
-  req: NextApiRequest,
-  res: NextApiResponse,
-) => {
+  id: string,
+  newTodo: { task?: string, done?: boolean }
+): Promise<Todo> => {
 
   const {
-    query: {
-      id = null
-    },
-    body: {
-      done = null,
-      task = null,
-    }
-  } = req;
-
-  if (id === null) {
-    res.status(401).json({ error: 'Missing id parameter.' })
-  }
+    task = null,
+    done = null,
+  } = newTodo;
 
   const todoRepo = await connection.getRepository(Todo)
-  const todoToUpdate = await todoRepo.findOne({ id: id as string });
+  const todoToUpdate = await todoRepo.findOneOrFail({ id: id as string });
 
-  if (todoToUpdate?.id) {
-    if (task !== null) todoToUpdate.task = String(task);
-    if (done !== null) todoToUpdate.done = Boolean(done);
+  if (task !== null) todoToUpdate.task = String(task);
+  if (done !== null) todoToUpdate.done = Boolean(done);
 
-    const newTodo = await todoRepo.save(todoToUpdate);
-    return res.status(200).json({ ...newTodo });
-  }
+  const updatedTodo = await todoRepo.save(todoToUpdate);
 
-
-  return res.status(200).json({ ...todoToUpdate });
+  return updatedTodo;
 
 }
 
-const deleteTodoById = async (
+export const deleteTodoById = async (
   connection: Connection,
-  req: NextApiRequest,
-  res: NextApiResponse,
-) => {
+  id: string,
+): Promise<boolean> => {
 
-  const {
-    query: {
-      id = null
-    },
-  } = req;
+  const todoRepo = await connection.getRepository(Todo);
 
-  if (id === null) {
-    res.status(400).json({ error: 'Missing id parameter.' })
-  }
+  await todoRepo.delete({
+    id: id as string,
+  });
 
-  try {
-    const todoRepo = await connection.getRepository(Todo);
-
-    await todoRepo.delete({
-      id: id as string,
-    });
-
-    return res.status(204).end();
-
-  } catch (error) {
-    return res.status(404).json({ error: `Todo with id ${id} not found.`});
-  }
+  return true;
+  
 }
 
-const handler = async (req: NextApiRequest, res: NextApiResponse) => {
-  try {
-    const db = new Database();
-    const dbCon = await db.getConnection();
+class TodoController extends BaseController {
 
-    switch (req.method) {
-      case 'GET':
-        return fetchTodoById(dbCon, req, res);
-      case 'POST':
-        return updateTodoById(dbCon, req, res);
-      case 'DELETE':
-        return deleteTodoById(dbCon, req, res);
-      default:
-        res.status(405).end();
+  readonly db: Database;
+
+  constructor(
+    readonly req: NextApiRequest,
+    readonly res: NextApiResponse,
+  ) {
+    super(req, res, {
+      allowedMethods: ['GET', 'POST', 'DELETE'],
+    });
+    this.db = new Database();
+  }
+
+  async get() {
+    try {
+
+      const { query: { id = null } } = this.req;
+
+      if (id === null) {
+        this.sendBadRequest('Missing id paramaeter.')
+      }
+
+      const connection = await this.db.getConnection();
+      const todo = await fetchTodoById(connection, (id as string));
+
+      this.sendResponse(todo);
+
+    } catch (error) {
+
+      this.sendError(error?.message ?? error);
+
     }
 
-
-  } catch(error) {
-    console.log(error);
-    res.status(500).json({ error });
   }
+
+  async post() {
+    try {
+
+      const {
+        query: {
+          id = null
+        },
+        body: {
+          done = null,
+          task = null,
+        }
+      } = this.req;
+
+      if (id === null) {
+        this.sendBadRequest('Missing id parameter.');
+      }
+
+      const connection = await this.db.getConnection();
+
+      const newTodo = await updateTodoById(
+        connection,
+        (id as string),
+        {
+          task, done
+        }
+      )
+
+      this.sendResponse(newTodo);
+
+    } catch (error) {
+
+      this.sendError(error?.message ?? error);
+
+    }
+  }
+
+  async delete() {
+    try {
+
+      const {
+        query: {
+          id = null
+        },
+      } = this.req;
+
+      if (id === null) {
+        this.sendBadRequest('Missing id parameter.');
+      }
+
+      const connection = await this.db.getConnection();
+      const isDeleted = await deleteTodoById(
+        connection,
+        (id as string)
+      );
+
+      if ( isDeleted ) {
+
+        this.res.status(204).end();
+
+      } else {
+        throw new Error(`Todo with id ${id} not found.`);
+      }
+
+
+    } catch (error) {
+
+      this.sendError(error?.message ?? error);
+
+    }
+  }
+
 }
 
-export default handler;
+export default BaseController.createController(TodoController);
